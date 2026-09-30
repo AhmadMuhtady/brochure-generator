@@ -125,3 +125,49 @@ class WebScraper:
             "links": list(dict.fromkeys(links)),
             "images": images,
         } 
+
+
+    def scrape_page(self, url: str) -> Dict[str, Any]:
+        if not self._context:
+            raise RuntimeError("Scraper must be started before calling scrape_page().")
+
+        page: Optional[Page] = None
+
+        try:
+            page = self._context.new_page()
+            page.goto(url, wait_until="networkidle", timeout=self.timeout_ms)
+
+            self._dismiss_popups(page)
+
+            content = page.content()
+            extracted = self._extract_fields(content, base_url=url)
+
+            return {
+                "url": url,
+                "status": "success",
+                "title": extracted["title"],
+                "text": extracted["text"],
+                "links": extracted["links"],
+                "images": extracted["images"],
+                "error": None,
+            }
+
+        except Exception as e:
+            return {
+                "url": url,
+                "status": "error",
+                "title": "",
+                "text": "",
+                "links": [],
+                "images": [],
+                "error": str(e),
+            }
+
+        finally:
+            if page:
+                try:
+                    page.close()
+                except Exception:
+                    pass
+
+    
