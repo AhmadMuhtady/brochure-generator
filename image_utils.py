@@ -367,6 +367,50 @@ def extract_color_palette(image_source: str, num_colors: int = 5) -> List[str]:
         return ["#1e293b", "#0f172a", "#f8fafc"]
 
 
+def process_scraped_assets(
+    page_data: Dict[str, Any],
+    force_ai_hero: bool = False,
+    save_locally: bool = True,
+) -> Dict[str, Any]:
+    raw_images = page_data.get("images", [])
+    title = page_data.get("title", "Company")
+    domain_slug = re.sub(r"[^a-zA-Z0-9]", "_", urlparse(page_data.get("url", "")).netloc)
+
+    selection = select_hero_and_logo(raw_images)
+    hero = selection["hero"]
+    logo = selection["logo"]
+
+    if hero and not force_ai_hero:
+        hero_source = hero["url"]
+        is_ai = False
+    else:
+        logger.info(f"Generating AI hero for: {title!r}...")
+        hero_source = generate_ai_cover(title, page_data.get("text", ""))
+        is_ai = True
+
+    local_hero_path = None
+    local_logo_path = None
+    if save_locally:
+        local_hero_path = download_and_save_image(hero_source, f"{domain_slug}_hero")
+        if logo:
+            local_logo_path = download_and_save_image(logo["url"], f"{domain_slug}_logo")
+
+    palette_target = local_hero_path if local_hero_path else hero_source
+    palette = extract_color_palette(palette_target)
+
+    return {
+        "url": page_data.get("url"),
+        "logo": {
+            "url": logo["url"] if logo else None,
+            "local_path": local_logo_path,
+        },
+        "hero_image": {
+            "url": hero_source,
+            "local_path": local_hero_path,
+            "is_ai_fallback": is_ai,
+        },
+        "color_palette": palette,
+    }
 
 
 
