@@ -61,4 +61,13 @@ class WebScraper:
             )
             self._context.set_default_timeout(self.timeout_ms)
 
-
+    def close(self) -> None:
+        if self._context:
+            self._context.close()
+            self._context = None
+        if self._browser:
+            self._browser.close()
+            self._browser = None
+        if self._playwright:
+            self._playwright.stop()
+            self._playwright = None
