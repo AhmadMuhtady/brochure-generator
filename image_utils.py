@@ -310,6 +310,42 @@ def generate_ai_cover(page_title: str, context_text: str = "") -> str:
     return get_contextual_stock_image(theme)
 
 
+def download_and_save_image(url_or_path: str, filename_prefix: str) -> Optional[str]:
+    """
+    Downloads an image URL or copies a local file to the destination prefix.
+    """
+    if os.path.exists(url_or_path):
+        ext = Path(url_or_path).suffix or ".png"
+        target_path = OUTPUT_DIR / f"{filename_prefix}{ext}"
+        if Path(url_or_path).resolve() == target_path.resolve():
+            return str(target_path)
+        try:
+            target_path.write_bytes(Path(url_or_path).read_bytes())
+            return str(target_path)
+        except Exception:
+            return url_or_path
+
+    try:
+        with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, follow_redirects=True) as client:
+            resp = client.get(url_or_path, timeout=15.0)
+            resp.raise_for_status()
+
+            ext = ".png"
+            content_type = resp.headers.get("content-type", "").lower()
+            if "svg" in content_type or url_or_path.lower().endswith(".svg"):
+                ext = ".svg"
+            elif "jpeg" in content_type or "jpg" in content_type:
+                ext = ".jpg"
+            elif "webp" in content_type:
+                ext = ".webp"
+
+            filepath = OUTPUT_DIR / f"{filename_prefix}{ext}"
+            filepath.write_bytes(resp.content)
+            return str(filepath)
+    except Exception as e:
+        logger.error(f"Failed to save {url_or_path}: {e}")
+        return None
+
 
 
 
