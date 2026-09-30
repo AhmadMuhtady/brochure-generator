@@ -37,7 +37,7 @@ UNWANTED_TAGS = [
 ]
 
 class WebScraper:
-    def __init__(self,headless: bool = False,timeout_ms: int = 30000):
+    def __init__(self, headless: bool = True, timeout_ms: int = 30000):
         self.headless = headless
         self.timeout_ms = timeout_ms
         self._playwright = None
@@ -170,4 +170,17 @@ class WebScraper:
                 except Exception:
                     pass
 
+    def scrape_url(url: str, headless: bool = True, timeout_ms: int = 30000) -> Dict[str, Any]:
     
+        with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
+            return scraper.scrape_page(url)
+    def scrape_urls(
+    urls: List[str], headless: bool = True, timeout_ms: int = 30000) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+
+        with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
+            for url in urls:
+                result = scraper.scrape_page(url)
+                results.append(result)
+
+        return results
