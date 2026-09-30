@@ -146,6 +146,93 @@ def select_hero_and_logo(
     return {"hero": hero, "logo": logo}
 
 
+def extract_visual_themes(title: str, context_text: str) -> str:
+    """
+    Synthesizes title and scraped body text into a clean visual theme
+    suitable for an editorial hero banner.
+    """
+    sample = f"{title} {context_text[:1500]}".lower()
+
+    if any(k in sample for k in ["law", "legal", "attorney", "counsel", "litigation"]):
+        return "modern law firm, elegant wood accents, minimalist legal library, warm natural lighting"
+    if any(k in sample for k in ["bakery", "pastry", "coffee", "cafe", "artisan bread"]):
+        return "artisan bakery counter, rustic wooden tables, warm sunlight, freshly baked sourdough"
+    if any(k in sample for k in ["medical", "clinic", "health", "doctor", "pharma"]):
+        return "contemporary medical clinic, clean bright architectural interior, serene daylight"
+    if any(k in sample for k in ["finance", "fintech", "banking", "wealth", "investment"]):
+        return "modern high-rise executive financial office, glass architecture, subtle morning glow"
+    if any(k in sample for k in ["software", "ai", "machine learning", "cloud", "developer"]):
+        return "futuristic high-tech workspace, subtle glowing network interfaces, sleek minimalist desk"
+
+    clean_lines = [
+        line.strip() for line in context_text.splitlines() 
+        if len(line.strip()) > 30 and not line.strip().startswith(("http", "{", "<"))
+    ]
+    summary_hint = clean_lines[0][:100] if clean_lines else title[:80]
+    return f"clean modern editorial photography representing: {summary_hint}"
+
+
+def build_hero_prompt(theme: str) -> str:
+    """Single prompt shared across providers to ensure consistent framing."""
+    return (
+        f"Wide editorial hero photograph evoking {theme}. "
+        "Main subject placed on the right third, softly blurred background, "
+        "large calm empty area on the left with smooth, uncluttered surfaces. "
+        "Soft cinematic lighting, shallow depth of field, muted premium color palette, "
+        "photorealistic, high-end magazine photography."
+    )
+
+
+def get_contextual_stock_image(theme: str) -> str:
+    category_photos = {
+        "legal": "photo-1589829545856-d10d557cf95f",
+        "bakery": "photo-1509440159596-0249088772ff",
+        "clinic": "photo-1519494026892-80bbd2d6fd0d",
+        "finance": "photo-1486406146926-c627a92ad1ab",
+        "tech": "photo-1518770660439-4636190af475",
+        "default": "photo-1497366216548-37526070297c",
+    }
+    lowered = theme.lower()
+    selected_id = category_photos["default"]
+    for key, photo_id in category_photos.items():
+        if key in lowered:
+            selected_id = photo_id
+            break
+    return f"https://images.unsplash.com/{selected_id}?auto=format&fit=crop&w=1600&q=80"
+
+
+def discover_available_image_model(client: Any) -> str:
+    global _CACHED_OPENAI_IMAGE_MODEL
+    if _CACHED_OPENAI_IMAGE_MODEL:
+        return _CACHED_OPENAI_IMAGE_MODEL
+
+    try:
+        available_models = [m.id for m in client.models.list().data]
+        preferred_candidates = [
+            OPENAI_IMAGE_MODEL,
+            "gpt-image-1",
+            "gpt-image-1-mini",
+            "gpt-image",
+            "dall-e-3",
+            "dall-e-2",
+        ]
+        for candidate in preferred_candidates:
+            if candidate in available_models:
+                _CACHED_OPENAI_IMAGE_MODEL = candidate
+                return candidate
+
+        matching = [m for m in available_models if "image" in m.lower()]
+        if matching:
+            _CACHED_OPENAI_IMAGE_MODEL = matching[0]
+            return _CACHED_OPENAI_IMAGE_MODEL
+    except Exception as e:
+        logger.warning(f"Could not list OpenAI models: {e}")
+
+    return OPENAI_IMAGE_MODEL
+
+
+
+
 
 
 
