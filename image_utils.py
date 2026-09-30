@@ -264,20 +264,21 @@ def generate_ai_cover(page_title: str, context_text: str = "") -> str:
                 quality="medium" if "gpt-image" in model_to_use else "standard",
                 n=1,
             )
+
             item = resp.data[0]
-
-
             if getattr(item, "b64_json", None):
                 out = OUTPUT_DIR / f"{base_name}.png"
                 out.write_bytes(base64.b64decode(item.b64_json))
                 return str(out)
 
-            
+
             if getattr(item, "url", None):
                 saved_path = download_and_save_image(item.url, base_name)
                 if saved_path:
                     return saved_path
                 raise IOError(f"Failed to download image from OpenAI URL: {item.url}")
+        except Exception as e:
+            print(f"[Warning] OpenAI image generation failed: {e}. Falling back to Pollinations...")
 
 
     try:
