@@ -231,6 +231,85 @@ def discover_available_image_model(client: Any) -> str:
     return OPENAI_IMAGE_MODEL
 
 
+def generate_ai_cover(page_title: str, context_text: str = "") -> str:
+    """
+    Generates a wide hero image tailored to the company's content.
+    Returns a local file path or fallback stock image URL.
+    """
+    clean_title = page_title.strip()[:80] or "Company Overview"
+    theme = extract_visual_themes(clean_title, context_text)
+    prompt = build_hero_prompt(theme)
+
+    key = hashlib.sha256(f"{clean_title}|{theme}".encode()).hexdigest()[:12]
+    base_name = f"{_slug(clean_title)}-{key}"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    cached = next(OUTPUT_DIR.glob(f"{base_name}.*"), None)
+    if cached:
+        print(f"Reusing cached hero image: {cached}")
+        return str(cached)
+
+
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            from openai import OpenAI
+            client = OpenAI()
+            model_to_use = discover_available_image_model(client)
+            print(f"Calling OpenAI image generation with model '{model_to_use}'...")
+
+            resp = client.images.generate(
+                model=model_to_use,
+                prompt=prompt + " No text, lettering, signage, or logos anywhere in the image.",
+                size="1024x1024" if "dall-e-2" in model_to_use else "1536x1024",
+                quality="medium" if "gpt-image" in model_to_use else "standard",
+                n=1,
+            )
+            item = resp.data[0]
+
+
+            if getattr(item, "b64_json", None):
+                out = OUTPUT_DIR / f"{base_name}.png"
+                out.write_bytes(base64.b64decode(item.b64_json))
+                return str(out)
+
+            
+            if getattr(item, "url", None):
+                saved_path = download_and_save_image(item.url, base_name)
+                if saved_path:
+                    return saved_path
+                raise IOError(f"Failed to download image from OpenAI URL: {item.url}")
+
+
+    try:
+        seed = int(key[:8], 16)
+        params = urllib.parse.urlencode({
+            "width": 1600,
+            "height": 896,
+            "model": "flux",
+            "nologo": "true",
+            "seed": seed,
+        })
+        url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?{params}"
+        print(f"Generating AI image via Pollinations for theme: '{theme[:50]}'...")
+
+        req = urllib.request.Request(url, headers={"User-Agent": "hero-cover/1.0"})
+        with urllib.request.urlopen(req, timeout=POLLINATIONS_TIMEOUT) as r:
+            content_type = r.headers.get("Content-Type", "")
+            if not content_type.startswith("image/"):
+                raise ValueError(f"Unexpected content type: {content_type!r}")
+            data = r.read()
+
+        ext = "png" if "png" in content_type else "jpg"
+        out = OUTPUT_DIR / f"{base_name}.{ext}"
+        out.write_bytes(data)
+        return str(out)
+    except Exception as e:
+        print(f"[!] Pollinations generation failed: {e}. Falling back to stock...")
+
+
+    return get_contextual_stock_image(theme)
+
+
 
 
 
