@@ -78,3 +78,13 @@ class WebScraper:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
+
+    def _dismiss_popups(self, page: Page) -> None:
+        for selector in DISMISS_SELECTORS:
+            try:
+                locator = page.locator(selector).first
+                if locator.is_visible(timeout=500):
+                    locator.click(timeout=1000)
+                    break
+            except Exception:
+                continue
