@@ -88,3 +88,40 @@ class WebScraper:
                     break
             except Exception:
                 continue
+    
+    def _extract_fields(self, html: str, base_url: str) -> Dict[str, Any]:
+        soup = BeautifulSoup(html, "html.parser")
+
+        title_tag = soup.find('title')
+        title = title_tag.get_text(strip=True) if title_tag else ""
+
+        links = []
+
+        for a_tag in soup.findAll('a',href = True):
+            href = a_tag['href'].strip()
+            if href and not href.startwith(("javascript:", "mailto:", "tel:", "#")):
+                links.append(urljoin(base_url, href))
+        images = []
+
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+
+            if src:
+                images.append(
+                    {
+                        "url": urljoin(base_url, src.strip()),
+                        "alt": img.get("alt", "").strip(),
+                    }
+                )
+
+        for tag in soup.find_all(UNWANTED_TAGS):
+            tag.decompose
+
+        clean_text = soup.get_text(separator='\n',strip=True)
+
+        return {
+            "title": title,
+            "text": clean_text,
+            "links": list(dict.fromkeys(links)),
+            "images": images,
+        } 
