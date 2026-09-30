@@ -96,7 +96,7 @@ class WebScraper:
 
         links = []
 
-        for a_tag in soup.findAll('a',href = True):
+        for a_tag in soup.find_all('a', href=True):
             href = a_tag['href'].strip()
             if href and not href.startswith(("javascript:", "mailto:", "tel:", "#")):
                 links.append(urljoin(base_url, href))
@@ -134,7 +134,18 @@ class WebScraper:
 
         try:
             page = self._context.new_page()
-            page.goto(url, wait_until="networkidle", timeout=self.timeout_ms)
+            response = page.goto(url, wait_until="networkidle", timeout=self.timeout_ms)
+
+            if response and response.status >= 400:
+                return {
+                    "url": url,
+                    "status": "error",
+                    "title": "",
+                    "text": "",
+                    "links": [],
+                    "images": [],
+                    "error": f"HTTP {response.status}: {response.status_text}",
+                }
 
             self._dismiss_popups(page)
 
