@@ -199,16 +199,31 @@ def scrape_urls(
 
 
 if __name__ == "__main__":
-    sample_urls = [
-        "https://huggingface.co/",
-        "https://quotes.toscrape.com/",
-        "https://httpbin.org/status/404",
-    ]
+    from image_utils import process_scraped_assets
+    from scraper import WebScraper
 
-    scraped_data = scrape_urls(sample_urls)
-    for item in scraped_data:
-        print(f"[{item['status'].upper()}] {item['url']} - Title: {item['title']!r}")
-        if item["error"]:
-            print(f"  Error: {item['error']}")
-        else:
-            print(f"  Extracted {len(item['links'])} links, {len(item['images'])} images, {len(item['text'])} chars")
+    url = "https://huggingface.co/"
+    with WebScraper() as scraper:
+        page_data = scraper.scrape_page(url)
+
+    # 1. Guard against failed scrape (network error, 4xx, 5xx)
+    if page_data.get("status") != "success":
+        print(f"[!] Scrape failed for {url}: {page_data.get('error')}")
+        exit(1)
+
+    # 2. Process assets only if scrape succeeded
+    processed = process_scraped_assets(
+        page_data,
+        force_ai_hero=True,
+        save_locally=True,
+    )
+
+    logo_data = processed.get("logo") or {}
+    hero_data = processed.get("hero_image") or {}
+
+    print(f"Logo URL:        {logo_data.get('url')}")
+    print(f"Logo File:       {logo_data.get('local_path')}")
+    print(f"Hero Image URL:  {hero_data.get('url')}")
+    print(f"Hero Image File: {hero_data.get('local_path')}")
+    print(f"Fallback Used?:  {hero_data.get('is_ai_fallback')}")
+    print(f"Palette:         {processed.get('color_palette')}\n")

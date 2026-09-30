@@ -1,0 +1,38 @@
+# Environment variables (NEVER commit these — API keys live here)
+.env
+.env.local
+.env.*.local
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Downloaded/generated images and other pipeline output
+output_images/
+data/
+output/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Gradio
+.gradio/
+flagged/
+gradio_cached_examples/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
