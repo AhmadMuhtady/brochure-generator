@@ -1,5 +1,4 @@
-from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -99,7 +98,7 @@ class WebScraper:
 
         for a_tag in soup.findAll('a',href = True):
             href = a_tag['href'].strip()
-            if href and not href.startwith(("javascript:", "mailto:", "tel:", "#")):
+            if href and not href.startswith(("javascript:", "mailto:", "tel:", "#")):
                 links.append(urljoin(base_url, href))
         images = []
 
@@ -115,7 +114,7 @@ class WebScraper:
                 )
 
         for tag in soup.find_all(UNWANTED_TAGS):
-            tag.decompose
+            tag.decompose()
 
         clean_text = soup.get_text(separator='\n',strip=True)
 
@@ -170,17 +169,35 @@ class WebScraper:
                 except Exception:
                     pass
 
-    def scrape_url(url: str, headless: bool = True, timeout_ms: int = 30000) -> Dict[str, Any]:
-    
-        with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
-            return scraper.scrape_page(url)
-    def scrape_urls(
-    urls: List[str], headless: bool = True, timeout_ms: int = 30000) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
+def scrape_url(url: str, headless: bool = True, timeout_ms: int = 30000) -> Dict[str, Any]:
+    with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
+        return scraper.scrape_page(url)
 
-        with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
-            for url in urls:
-                result = scraper.scrape_page(url)
-                results.append(result)
 
-        return results
+def scrape_urls(
+    urls: List[str], headless: bool = True, timeout_ms: int = 30000
+) -> List[Dict[str, Any]]:
+    results: List[Dict[str, Any]] = []
+
+    with WebScraper(headless=headless, timeout_ms=timeout_ms) as scraper:
+        for url in urls:
+            result = scraper.scrape_page(url)
+            results.append(result)
+
+    return results
+
+
+if __name__ == "__main__":
+    sample_urls = [
+        "https://huggingface.co/",
+        "https://quotes.toscrape.com/",
+        "https://httpbin.org/status/404",
+    ]
+
+    scraped_data = scrape_urls(sample_urls)
+    for item in scraped_data:
+        print(f"[{item['status'].upper()}] {item['url']} - Title: {item['title']!r}")
+        if item["error"]:
+            print(f"  Error: {item['error']}")
+        else:
+            print(f"  Extracted {len(item['links'])} links, {len(item['images'])} images, {len(item['text'])} chars")
