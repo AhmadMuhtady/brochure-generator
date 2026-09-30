@@ -347,6 +347,27 @@ def download_and_save_image(url_or_path: str, filename_prefix: str) -> Optional[
         return None
 
 
+def extract_color_palette(image_source: str, num_colors: int = 5) -> List[str]:
+    try:
+        if os.path.exists(image_source):
+            with open(image_source, "rb") as f:
+                content = f.read()
+        else:
+            resp = httpx.get(image_source, timeout=8.0, follow_redirects=True)
+            resp.raise_for_status()
+            content = resp.content
+
+        with Image.open(io.BytesIO(content)) as im:
+            im = im.convert("RGB")
+            im.thumbnail((100, 100))
+            quantized = im.quantize(colors=num_colors, method=Image.Quantize.FASTOCTREE)
+            palette = quantized.getpalette()[: num_colors * 3]
+            return [f"#{palette[i]:02x}{palette[i+1]:02x}{palette[i+2]:02x}" for i in range(0, len(palette), 3)]
+    except Exception:
+        return ["#1e293b", "#0f172a", "#f8fafc"]
+
+
+
 
 
 
