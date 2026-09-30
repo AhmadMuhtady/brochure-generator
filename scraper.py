@@ -71,3 +71,10 @@ class WebScraper:
         if self._playwright:
             self._playwright.stop()
             self._playwright = None
+
+    def __enter__(self) -> "WebScraper":
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
